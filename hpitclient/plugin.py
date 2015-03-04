@@ -17,7 +17,7 @@ class Plugin(MessageSenderMixin):
         self.transaction_callback = None
         self.callbacks = {}
 
-        self.poll_wait = 100
+        self.poll_wait = 50
         self.time_last_poll = time.time() * 1000
 
         self._add_hooks(
