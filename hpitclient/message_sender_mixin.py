@@ -127,7 +127,8 @@ class MessageSenderMixin(RequestsMixin):
             if not callable(self.response_callbacks[message_id]):
                 self.send_log_entry("Callback registered for transcation id: " + message_id + " is not a callable.")
                 continue
-                
+            
+            response_payload["message_id"] = message_id #inject the message id in the response
             self.response_callbacks[message_id](response_payload)
 
         if not self._try_hook('post_dispatch_responses'):

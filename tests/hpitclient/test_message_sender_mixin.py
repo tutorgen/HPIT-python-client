@@ -104,7 +104,7 @@ def test_dispatch_responses():
 
     bad_response = [{"bad_response": "boo"}]
     bad_response2 = [{"message":{"message_id":"4"}}]
-    good_response = [{"message": {"message_id":"4"},"response":"2"}]
+    good_response = [{"message": {"message_id":"4"},"response":{"data":"2"}}]
 
     
     def returnFalse():

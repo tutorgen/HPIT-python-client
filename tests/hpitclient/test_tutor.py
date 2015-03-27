@@ -56,6 +56,6 @@ class TestTutor(unittest.TestCase):
         #this should work
         subject.block_timeout_time = 999999
         subject._poll_responses = MagicMock(return_value = [{"message":{"message_id":"4"},"response":{"data":"1"}}])
-        subject.send_blocking("message_name",{"payload":"something"}).should.equal({"data":"1"})
+        subject.send_blocking("message_name",{"payload":"something"}).should.equal({"data":"1","message_id":"4"})
         
 
