@@ -13,9 +13,9 @@ class Tutor(MessageSenderMixin):
         self.api_key = str(api_key)
         self.callback = callback
 
-        self.poll_wait = 50
+        self.poll_wait = 2000
         self.time_last_poll = time.time() * 1000
-        self.block_timeout_time = 5
+        self.block_timeout_time = 10
         
         self.blocking_store = {}
 
@@ -82,12 +82,13 @@ class Tutor(MessageSenderMixin):
                     break;
 
                 #A better timer
-                cur_time = time.time() * 1000
+                #cur_time = time.time() * 1000
 
-                if cur_time - self.time_last_poll < self.poll_wait:
-                    continue;
+                #if cur_time - self.time_last_poll < self.poll_wait:
+                #    continue;
 
-                self.time_last_poll = cur_time
+                #self.time_last_poll = cur_time
+                time.sleep(self.poll_wait/1000)
 
                 responses = self._poll_responses()
 

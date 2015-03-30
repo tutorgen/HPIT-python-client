@@ -17,7 +17,7 @@ class Plugin(MessageSenderMixin):
         self.transaction_callback = None
         self.callbacks = {}
 
-        self.poll_wait = 50
+        self.poll_wait = 2000
         self.time_last_poll = time.time() * 1000
 
         self._add_hooks(
@@ -241,12 +241,13 @@ class Plugin(MessageSenderMixin):
             while self.run_loop:
 
                 #A better timer
-                cur_time = time.time() * 1000
+                #cur_time = time.time() * 1000
 
-                if cur_time - self.time_last_poll < self.poll_wait:
-                    continue;
+                #if cur_time - self.time_last_poll < self.poll_wait:
+                #    continue;
 
-                self.time_last_poll = cur_time
+                #self.time_last_poll = cur_time
+                time.sleep(self.poll_wait/1000)
 
                 #Handle messages submitted by tutors
                 if not self._try_hook('pre_poll_messages'):
