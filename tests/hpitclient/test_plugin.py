@@ -177,7 +177,7 @@ class TestPlugin(unittest.TestCase):
         Plugin._handle_transactions() Test plan:
             - 
         """
-        
+        """
         time = datetime.now()
         event_param = {"transactions": [
                     {"message_id": '1234', "sender_entity_id": '4567', "message_name":"test_event","time_created":time,"message":{"thing": "test message"}},
@@ -190,7 +190,8 @@ class TestPlugin(unittest.TestCase):
         self.test_plugin._handle_transactions().should.equal(True)
         self.test_plugin.transaction_callback.assert_called_with(event_param["transactions"][0]["message"])
         self.test_plugin.transaction_callback.call_count.should.equal(2)
-
+        """
+        
     wildCardCalled = False
     @httpretty.activate
     def test_dispatch(self):

@@ -42,7 +42,7 @@ class TestTutor(unittest.TestCase):
         
         subject = Tutor(123,456,None)
  
-        subject.poll_wait = -1
+        subject.poll_wait = 0
         subject.send_log_entry = MagicMock()
         
         #transaction should return a exception

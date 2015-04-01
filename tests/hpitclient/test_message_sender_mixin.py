@@ -83,6 +83,12 @@ def test_poll_responses():
     test_message_sender_mixin._poll_responses().should.equal(False)
     
     setattr(test_message_sender_mixin,"pre_poll_responses",returnTrue)
+    setattr(test_message_sender_mixin,"post_poll_responses",returnTrue)
+    test_message_sender_mixin._poll_responses().should.equal({})
+    
+    test_message_sender_mixin.outstanding_responses["4"] = 1
+    
+    setattr(test_message_sender_mixin,"pre_poll_responses",returnTrue)
     setattr(test_message_sender_mixin,"post_poll_responses",returnFalse)
     test_message_sender_mixin._poll_responses().should.equal(False)
     
@@ -117,6 +123,8 @@ def test_dispatch_responses():
     test_message_sender_mixin = MessageSenderMixin()
     test_message_sender_mixin.send_log_entry = MagicMock()
     
+    test_message_sender_mixin.outstanding_responses["4"] = 1
+    
     test_message_sender_mixin.response_callbacks["4"] = callback1
     setattr(test_message_sender_mixin,"pre_dispatch_responses",returnFalse)
     setattr(test_message_sender_mixin,"post_dispatch_responses",returnTrue)
@@ -146,8 +154,10 @@ def test_dispatch_responses():
     test_message_sender_mixin._dispatch_responses(good_response)
     test_message_sender_mixin.send_log_entry.assert_called_once_with("Callback registered for transcation id: 4 is not a callable.")
     
+    test_message_sender_mixin.outstanding_responses["4"] = 1
     test_message_sender_mixin.response_callbacks["4"] = callback1
     test_message_sender_mixin._dispatch_responses(good_response).should.equal(True)
+    test_message_sender_mixin.outstanding_responses.should.be.empty
     
 @httpretty.activate 
 def test_get_message_owner():
