@@ -8,6 +8,8 @@ class MessageSenderMixin(RequestsMixin):
         super().__init__()
         self.response_callbacks = {}
         
+        self.outstanding_responses = {}
+        
         self._add_hooks('pre_poll_responses', 'post_poll_responses', 'pre_dispatch_responses', 'post_dispatch_responses')
 
     def send(self, message_name, payload, callback=None):
@@ -45,6 +47,7 @@ class MessageSenderMixin(RequestsMixin):
 
         if callback:
             self.response_callbacks[response['message_id']] = callback
+            self.outstanding_responses[response["message_id"]] = 1
 
         return response
         
@@ -61,6 +64,7 @@ class MessageSenderMixin(RequestsMixin):
 
         if callback:
             self.response_callbacks[response['message_id']] = callback
+            self.outstanding_responses[response["message_id"]] = 1
 
         return response
         
@@ -82,7 +86,10 @@ class MessageSenderMixin(RequestsMixin):
         if not self._try_hook('pre_poll_responses'):
             return False
 
-        responses = self._get_data('response/list')['responses']
+        if self.outstanding_responses:
+            responses = self._get_data('response/list')['responses']
+        else:
+            responses = {}
 
         if not self._try_hook('post_poll_responses'):
             return False
@@ -130,6 +137,10 @@ class MessageSenderMixin(RequestsMixin):
             
             response_payload["message_id"] = message_id #inject the message id in the response
             self.response_callbacks[message_id](response_payload)
+            
+            self.outstanding_responses[message_id] -=1
+            if self.outstanding_responses[message_id] <=0:
+                del self.outstanding_responses[message_id]
 
         if not self._try_hook('post_dispatch_responses'):
             return False

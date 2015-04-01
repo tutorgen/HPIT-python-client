@@ -17,8 +17,7 @@ class Plugin(MessageSenderMixin):
         self.transaction_callback = None
         self.callbacks = {}
 
-        self.poll_wait = 2000
-        self.time_last_poll = time.time() * 1000
+        self.poll_wait = 1500
 
         self._add_hooks(
             'pre_poll_messages', 'post_poll_messages', 
@@ -174,7 +173,9 @@ class Plugin(MessageSenderMixin):
         """
         Get a list of datashop transactions from the server. 
         """
-
+        
+        """UNUSED, transactions now go with normal messagse
+        
         transaction_data = self._get_data('plugin/transaction/list')['transactions']
 
         for item in transaction_data:
@@ -189,7 +190,7 @@ class Plugin(MessageSenderMixin):
                 self.transaction_callback(payload)
 
         return True
-
+        """
 
     def _dispatch(self, message_data):
         """
@@ -207,21 +208,25 @@ class Plugin(MessageSenderMixin):
             payload['sender_entity_id'] = message_item['sender_entity_id']
             payload['time_created'] = message_item['time_created']
 
-            try:
-                self.callbacks[message](payload)
-            except KeyError:
-                #No callback registered try the wildcard
-                if self.wildcard_callback:
-                    try:
-                        self.wildcard_callback(payload)
-                    except TypeError:
-                        raise PluginPollError("Wildcard Callback is not a callable")
-            except TypeError as e:
-                #Callback isn't a function
-                if self.callbacks[message] is None:
-                    raise PluginPollError("No callback registered for message: <" + message + ">")
-                else:
-                    raise e
+            if message == "transaction":
+                if self.transaction_callback:
+                    self.transaction_callback(payload)
+            else:
+                try:
+                    self.callbacks[message](payload)
+                except KeyError:
+                    #No callback registered try the wildcard
+                    if self.wildcard_callback:
+                        try:
+                            self.wildcard_callback(payload)
+                        except TypeError:
+                            raise PluginPollError("Wildcard Callback is not a callable")
+                except TypeError as e:
+                    #Callback isn't a function
+                    if self.callbacks[message] is None:
+                        raise PluginPollError("No callback registered for message: <" + message + ">")
+                    else:
+                        raise e
 
         if not self._try_hook('post_dispatch_messages'):
             return False
@@ -240,13 +245,6 @@ class Plugin(MessageSenderMixin):
         try:
             while self.run_loop:
 
-                #A better timer
-                #cur_time = time.time() * 1000
-
-                #if cur_time - self.time_last_poll < self.poll_wait:
-                #    continue;
-
-                #self.time_last_poll = cur_time
                 time.sleep(self.poll_wait/1000)
 
                 #Handle messages submitted by tutors
@@ -260,7 +258,8 @@ class Plugin(MessageSenderMixin):
 
                 if not self._dispatch(message_data):
                     return False
-
+                """UNUSED transactions now go with normal messages
+                
                 if not self._try_hook('pre_handle_transactions'):
                     break;
 
@@ -269,18 +268,19 @@ class Plugin(MessageSenderMixin):
 
                 if not self._try_hook('post_handle_transactions'):
                     break;
+                """
 
                 #Handle responses from other plugins
-
                 responses = self._poll_responses()
 
                 if not self._dispatch_responses(responses):
                     break;
 
         except KeyboardInterrupt:
-            pass
-
-        self.disconnect()
+            self.disconnect()
+        except:
+            self.disconnect()
+            raise
 
 
     def stop(self):

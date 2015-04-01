@@ -13,8 +13,7 @@ class Tutor(MessageSenderMixin):
         self.api_key = str(api_key)
         self.callback = callback
 
-        self.poll_wait = 2000
-        self.time_last_poll = time.time() * 1000
+        self.poll_wait = 1500
         self.block_timeout_time = 10
         
         self.blocking_store = {}
@@ -44,20 +43,17 @@ class Tutor(MessageSenderMixin):
         }).json()
         
         self.response_callbacks[response['message_id']] = get_blocking_callback(response["message_id"])
+        self.outstanding_responses[response["message_id"]] = 1
         
         block_start_time = time.time()
         block_current_time = block_start_time
         
         while not self.blocking_store[response["message_id"]]:
-            cur_time = time.time() * 1000
-            if cur_time - self.time_last_poll < self.poll_wait:
-                continue;
+            time.sleep(self.poll_wait/1000)
                 
             block_current_time = time.time()
             if block_current_time - block_start_time > self.block_timeout_time:
                 return None
-
-            self.time_last_poll = cur_time
 
             responses = self._poll_responses()
             
@@ -81,25 +77,18 @@ class Tutor(MessageSenderMixin):
                 if not self.callback():
                     break;
 
-                #A better timer
-                #cur_time = time.time() * 1000
-
-                #if cur_time - self.time_last_poll < self.poll_wait:
-                #    continue;
-
-                #self.time_last_poll = cur_time
                 time.sleep(self.poll_wait/1000)
-
+                
                 responses = self._poll_responses()
 
                 if not self._dispatch_responses(responses):
                     break;
 
         except KeyboardInterrupt:
-            pass
-
-        self.disconnect()
-
+            self.disconnect()
+        except:
+            self.disconnect()
+            raise
 
     def stop(self):
         self.run_loop = False
