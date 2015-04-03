@@ -4,6 +4,8 @@ from .message_sender_mixin import MessageSenderMixin
 from .exceptions import PluginPollError, BadCallbackException
 from .exceptions import AuthenticationError, InvalidParametersError, AuthorizationError
 
+import threading
+import time
 import json
 
 class Plugin(MessageSenderMixin):
@@ -199,40 +201,61 @@ class Plugin(MessageSenderMixin):
         if not self._try_hook('pre_dispatch_messages'):
             return False
 
+        threads = []
+        start_time = time.time()
         for message_item in message_data:
-            message = message_item['message_name']
-            payload = message_item['message']
-
-            #Inject the message_id into the payload
-            payload['message_id'] = message_item['message_id']
-            payload['sender_entity_id'] = message_item['sender_entity_id']
-            payload['time_created'] = message_item['time_created']
-
-            if message == "transaction":
-                if self.transaction_callback:
-                    self.transaction_callback(payload)
+            if self.use_multiple_threads:
+                thread = threading.Thread(target=self._dispatch_message,
+                                          args=(message_item,))
+                thread.start()
+                threads.append(thread)
             else:
-                try:
-                    self.callbacks[message](payload)
-                except KeyError:
-                    #No callback registered try the wildcard
-                    if self.wildcard_callback:
-                        try:
-                            self.wildcard_callback(payload)
-                        except TypeError:
-                            raise PluginPollError("Wildcard Callback is not a callable")
-                except TypeError as e:
-                    #Callback isn't a function
-                    if self.callbacks[message] is None:
-                        raise PluginPollError("No callback registered for message: <" + message + ">")
-                    else:
-                        raise e
+                self._dispatch_message(message_item)
+
+        if self.use_multiple_threads:
+            for thread in threads:
+                thread.join()
+
+        if len(message_data) > 0:
+            end_time = time.time()
+            print('dispatched {} message{} in {} sec'.format(
+                  len(message_data),
+                  's' if len(message_data) != 1 else '',
+                  end_time-start_time))
 
         if not self._try_hook('post_dispatch_messages'):
             return False
 
         return True
 
+    def _dispatch_message(self, message_item):
+        message = message_item['message_name']
+        payload = message_item['message']
+
+        #Inject the message_id into the payload
+        payload['message_id'] = message_item['message_id']
+        payload['sender_entity_id'] = message_item['sender_entity_id']
+        payload['time_created'] = message_item['time_created']
+
+        if message == "transaction":
+            if self.transaction_callback:
+                self.transaction_callback(payload)
+        else:
+            try:
+                self.callbacks[message](payload)
+            except KeyError:
+                #No callback registered try the wildcard
+                if self.wildcard_callback:
+                    try:
+                        self.wildcard_callback(payload)
+                    except TypeError:
+                        raise PluginPollError("Wildcard Callback is not a callable")
+            except TypeError as e:
+                #Callback isn't a function
+                if self.callbacks[message] is None:
+                    raise PluginPollError("No callback registered for message: <" + message + ">")
+                else:
+                    raise e
 
     def start(self):
         """

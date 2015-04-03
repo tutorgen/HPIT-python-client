@@ -3,12 +3,17 @@ from .exceptions import ResponseDispatchError
 from .exceptions import InvalidMessageNameException
 from .exceptions import AuthenticationError, InvalidParametersError, AuthorizationError, ResourceNotFoundError
 
+import threading
+import time
+
+
 class MessageSenderMixin(RequestsMixin):
     def __init__(self):
         super().__init__()
         self.response_callbacks = {}
         
         self.outstanding_responses = {}
+        self.use_multiple_threads = False
         
         self._add_hooks('pre_poll_responses', 'post_poll_responses', 'pre_dispatch_responses', 'post_dispatch_responses')
 
@@ -114,38 +119,62 @@ class MessageSenderMixin(RequestsMixin):
         if not self._try_hook('pre_dispatch_responses'):
             return False
 
+        threads = []
+
+        start_time = time.time()
+
         for res in responses:
-            try:
-                message_id = res['message']['message_id']
-            except KeyError:
-                self.send_log_entry('Invalid response from HPIT. No message id supplied in response.')
-                continue
+            if self.use_multiple_threads:
+                thread = threading.Thread(target=self._dispatch_response,
+                                          args=(res,))
+                thread.start()
+                threads.append(thread)
+            else:
+                self._dispatch_response(res)
 
-            try:
-                response_payload = res['response']
-            except KeyError:
-                self.send_log_entry('Invalid response from HPIT. No response payload supplied.')
-                continue
+        if self.use_multiple_threads:
+            for thread in threads:
+                thread.join()
 
-            if message_id not in self.response_callbacks:
-                self.send_log_entry('No callback registered for message id: ' + message_id)
-                continue
-
-            if not callable(self.response_callbacks[message_id]):
-                self.send_log_entry("Callback registered for transcation id: " + message_id + " is not a callable.")
-                continue
-            
-            response_payload["message_id"] = message_id #inject the message id in the response
-            self.response_callbacks[message_id](response_payload)
-            
-            self.outstanding_responses[message_id] -=1
-            if self.outstanding_responses[message_id] <=0:
-                del self.outstanding_responses[message_id]
+        if len(responses) > 0:
+            end_time = time.time()
+            print('dispatched {} response{} in {} sec'.format(
+                  len(responses),
+                  's' if len(responses) != 1 else '',
+                  end_time-start_time))
 
         if not self._try_hook('post_dispatch_responses'):
             return False
 
         return True
+
+    def _dispatch_response(self, res):
+        try:
+            message_id = res['message']['message_id']
+        except KeyError:
+            self.send_log_entry('Invalid response from HPIT. No message id supplied in response.')
+            return
+
+        try:
+            response_payload = res['response']
+        except KeyError:
+            self.send_log_entry('Invalid response from HPIT. No response payload supplied.')
+            return
+
+        if message_id not in self.response_callbacks:
+            self.send_log_entry('No callback registered for message id: ' + message_id)
+            return
+
+        if not callable(self.response_callbacks[message_id]):
+            self.send_log_entry("Callback registered for transcation id: " + message_id + " is not a callable.")
+            return
+        
+        response_payload["message_id"] = message_id #inject the message id in the response
+        self.response_callbacks[message_id](response_payload)
+        
+        self.outstanding_responses[message_id] -=1
+        if self.outstanding_responses[message_id] <=0:
+            del self.outstanding_responses[message_id]
 
     #Plugin or Tutor can query Message Owner
     def get_message_owner(self, message_name):
