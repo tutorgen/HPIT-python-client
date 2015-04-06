@@ -13,7 +13,7 @@ class MessageSenderMixin(RequestsMixin):
         self.response_callbacks = {}
         
         self.outstanding_responses = {}
-        self.use_multiple_threads = False
+        self.should_dispatch_async = True
         
         self._add_hooks('pre_poll_responses', 'post_poll_responses', 'pre_dispatch_responses', 'post_dispatch_responses')
 
@@ -120,11 +120,8 @@ class MessageSenderMixin(RequestsMixin):
             return False
 
         threads = []
-
-        start_time = time.time()
-
         for res in responses:
-            if self.use_multiple_threads:
+            if self.should_dispatch_async and len(responses) > 1:
                 thread = threading.Thread(target=self._dispatch_response,
                                           args=(res,))
                 thread.start()
@@ -132,16 +129,8 @@ class MessageSenderMixin(RequestsMixin):
             else:
                 self._dispatch_response(res)
 
-        if self.use_multiple_threads:
-            for thread in threads:
-                thread.join()
-
-        if len(responses) > 0:
-            end_time = time.time()
-            print('dispatched {} response{} in {} sec'.format(
-                  len(responses),
-                  's' if len(responses) != 1 else '',
-                  end_time-start_time))
+        for thread in threads:
+            thread.join()
 
         if not self._try_hook('post_dispatch_responses'):
             return False

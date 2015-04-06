@@ -202,9 +202,8 @@ class Plugin(MessageSenderMixin):
             return False
 
         threads = []
-        start_time = time.time()
         for message_item in message_data:
-            if self.use_multiple_threads:
+            if self.should_dispatch_async and len(message_data) > 1:
                 thread = threading.Thread(target=self._dispatch_message,
                                           args=(message_item,))
                 thread.start()
@@ -212,16 +211,8 @@ class Plugin(MessageSenderMixin):
             else:
                 self._dispatch_message(message_item)
 
-        if self.use_multiple_threads:
-            for thread in threads:
-                thread.join()
-
-        if len(message_data) > 0:
-            end_time = time.time()
-            print('dispatched {} message{} in {} sec'.format(
-                  len(message_data),
-                  's' if len(message_data) != 1 else '',
-                  end_time-start_time))
+        for thread in threads:
+            thread.join()
 
         if not self._try_hook('post_dispatch_messages'):
             return False
