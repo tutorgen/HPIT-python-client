@@ -5,7 +5,6 @@ from .exceptions import PluginPollError, BadCallbackException
 from .exceptions import AuthenticationError, InvalidParametersError, AuthorizationError
 
 import threading
-import time
 import json
 
 class Plugin(MessageSenderMixin):
