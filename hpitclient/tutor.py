@@ -13,7 +13,7 @@ class Tutor(MessageSenderMixin):
         self.api_key = str(api_key)
         self.callback = callback
 
-        self.poll_wait = 1500
+        self.poll_wait = 750
         self.block_timeout_time = 10
         
         self.blocking_store = {}
