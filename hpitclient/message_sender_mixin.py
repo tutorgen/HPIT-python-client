@@ -3,7 +3,7 @@ from .exceptions import ResponseDispatchError
 from .exceptions import InvalidMessageNameException
 from .exceptions import AuthenticationError, InvalidParametersError, AuthorizationError, ResourceNotFoundError
 
-import threading
+import concurrent.futures
 import time
 
 
@@ -119,18 +119,12 @@ class MessageSenderMixin(RequestsMixin):
         if not self._try_hook('pre_dispatch_responses'):
             return False
 
-        threads = []
-        for res in responses:
-            if self.should_dispatch_async and len(responses) > 1:
-                thread = threading.Thread(target=self._dispatch_response,
-                                          args=(res,))
-                thread.start()
-                threads.append(thread)
-            else:
-                self._dispatch_response(res)
-
-        for thread in threads:
-            thread.join()
+        if self.should_dispatch_async and len(responses) > 1:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                for res in responses:
+                    executor.submit(self._dispatch_response, res)
+        elif len(responses) == 1:
+            self._dispatch_response(responses[0])
 
         if not self._try_hook('post_dispatch_responses'):
             return False
