@@ -4,7 +4,7 @@ from .message_sender_mixin import MessageSenderMixin
 from .exceptions import PluginPollError, BadCallbackException
 from .exceptions import AuthenticationError, InvalidParametersError, AuthorizationError
 
-import threading
+import concurrent.futures
 import json
 
 class Plugin(MessageSenderMixin):
@@ -200,18 +200,12 @@ class Plugin(MessageSenderMixin):
         if not self._try_hook('pre_dispatch_messages'):
             return False
 
-        threads = []
-        for message_item in message_data:
-            if self.should_dispatch_async and len(message_data) > 1:
-                thread = threading.Thread(target=self._dispatch_message,
-                                          args=(message_item,))
-                thread.start()
-                threads.append(thread)
-            else:
-                self._dispatch_message(message_item)
-
-        for thread in threads:
-            thread.join()
+        if self.should_dispatch_async and len(message_data) > 1:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                for message_item in message_data:
+                    executor.submit(self._dispatch_message, message_item)
+        elif len(message_data) == 1:
+            self._dispatch_message(message_data[0])
 
         if not self._try_hook('post_dispatch_messages'):
             return False
