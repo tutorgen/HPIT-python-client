@@ -18,7 +18,9 @@ class Plugin(MessageSenderMixin):
         self.transaction_callback = None
         self.callbacks = {}
 
-        self.poll_wait = 750
+        self.poll_wait = 750 #milliseconds
+        self.ping_time = 10 #seconds
+        self.last_ping = time.time() - 10
 
         self._add_hooks(
             'pre_poll_messages', 'post_poll_messages', 
@@ -282,6 +284,10 @@ class Plugin(MessageSenderMixin):
 
                 if not self._dispatch_responses(responses):
                     break;
+                    
+                if time.time() - self.last_ping > self.ping_time:
+                    self._post_data("ping")
+                    self.last_ping = time.time()
 
         except KeyboardInterrupt:
             self.disconnect()
