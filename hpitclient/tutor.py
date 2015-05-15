@@ -13,8 +13,10 @@ class Tutor(MessageSenderMixin):
         self.api_key = str(api_key)
         self.callback = callback
 
-        self.poll_wait = 750
-        self.block_timeout_time = 10
+        self.poll_wait = 750 #milliseconds
+        self.block_timeout_time = 10 #seconds
+        self.ping_time = 10 #seconds
+        self.last_ping = time.time() - 10
         
         self.blocking_store = {}
 
@@ -83,6 +85,10 @@ class Tutor(MessageSenderMixin):
 
                 if not self._dispatch_responses(responses):
                     break;
+                    
+                if time.time() - self.last_ping > self.ping_time:
+                    self._post_data("ping")
+                    self.last_ping = time.time()
 
         except KeyboardInterrupt:
             self.disconnect()
